@@ -1,3 +1,13 @@
+% 
+% lum_mod, March 2021, version 0.3
+% (c) Rodrigo Dal Ben (dalbenwork@gmail.com)
+%
+% Fix bugs:
+% - Matching function now works with average values (not provided by user);
+% - Normalizing function now perform the correct operation for Lab CIE
+% images.
+%
+% ------------------------------------------------------------------------
 %
 % lum_mod, February 2019, version 0.2
 % (c) Rodrigo Dal Ben (dalbenwork@gmail.com)
@@ -92,6 +102,10 @@ end
 if n_or_m == 'M'
     prompt = 'Do you want to provide luminance values manually? (Y/N)\n';
     lum_src = input(prompt,'s');
+    while ~((lum_src == 'Y') ||  (lum_src == 'N'))
+    prompt = 'Please, type Y or N\n';
+    lum_src = input(prompt, 's');
+    end
 end
 
 if n_or_m == 'M' && lum_src == 'Y'
@@ -108,8 +122,8 @@ if n_or_m == 'M' && lum_src == 'Y'
         manual_lab = str2double(manual_lab);
             while manual_lab < 0 || manual_lab > 100
             prompt = 'Please provide a value from 0 to 100\n';
-            manual_hsv = input(prompt, 's');
-            manual_hsv = str2double(manual_hsv);
+            manual_lab = input(prompt, 's');
+            manual_lab = str2double(manual_lab);
             end
         disp('Set');
         disp('Please wait...');
@@ -123,13 +137,13 @@ elseif n_or_m == 'N'
             manual_hsv = input(prompt, 's');
             manual_hsv = str2double(manual_hsv);
             end
-        prompt = 'Which will be the mean luminance for lab images (0-100)?\n';
+    prompt = 'Which will be the mean luminance for lab images (0-100)?\n';
         manual_lab = input(prompt, 's');
         manual_lab = str2double(manual_lab);
             while manual_lab < 0 || manual_lab > 100
             prompt = 'Please provide a value from 0 to 100\n';
-            manual_hsv = input(prompt, 's');
-            manual_hsv = str2double(manual_hsv);
+            manual_lab = input(prompt, 's');
+            manual_lab = str2double(manual_lab);
             end
        % Setting the luminance std deviation desired to normalized images     
     prompt = 'Which will be the luminance standard deviation for hsv images (0-1)?\n';
@@ -150,39 +164,42 @@ elseif n_or_m == 'N'
             end         
         disp('Set');
         disp('Please wait...');
-    
-       
-        for i = 1:numim
-            % load images
-            file_name = strcat(input_folder, sep2, src(i).name);
-            I = imread(file_name);
-                %figure,imshow(I); % Check if img were created correctly (delete %)
-    
-            % from rbg to hsv color space and set Value attribute
-            hsv = rgb2hsv(I);
-            v_hsv = hsv(:,:,3);
-                %figure, imshow(v_hsv); %Checking the luminance channel
-        
-            % from rbg to lab color space and set Value attribute
-            lab = rgb2lab(I);
-            l_lab = lab(:,:,1);
-                %figure, imshow(l_lab); %Checking the luminance channel
-         
-            % Redifining M an S, based on Intensity Values (sums each iteration)
-            M_hsv = M_hsv + mean2(v_hsv(:));
-            S_hsv = S_hsv + std2(v_hsv(:));
-            M_lab = M_lab + mean2(l_lab(:));
-            S_lab = S_lab + std2(l_lab(:));
-        end
+elseif n_or_m == 'M' && lum_src == 'N'
+    % standard msg    
+    disp('Set');
+    disp('Please wait...');
 
-    % Redifining Mean
-    M_hsv_t = M_hsv/numim;
-    S_hsv_t = S_hsv/numim;
-    M_lab_t = M_lab/numim;
-    S_lab_t = S_lab/numim;
-    
 end
 
+for i = 1:numim
+    % load images
+    file_name = strcat(input_folder, sep2, src(i).name);
+    I = imread(file_name);
+    %figure,imshow(I); % Check if img were created correctly (delete %)
+    
+    % from rbg to hsv color space and set Value attribute
+    hsv = rgb2hsv(I);
+    v_hsv = hsv(:,:,3);
+    %figure, imshow(v_hsv); %Checking the luminance channel
+        
+    % from rbg to lab color space and set Value attribute
+    lab = rgb2lab(I);
+    l_lab = lab(:,:,1);
+    %figure, imshow(l_lab); %Checking the luminance channel
+         
+    % Redifining M an S, based on Intensity Values (sums each iteration)
+    M_hsv = M_hsv + mean2(v_hsv(:));
+    S_hsv = S_hsv + std2(v_hsv(:));
+    M_lab = M_lab + mean2(l_lab(:));
+    S_lab = S_lab + std2(l_lab(:));      
+end
+
+% Redifining Mean
+M_hsv_t = M_hsv/numim;
+S_hsv_t = S_hsv/numim;
+M_lab_t = M_lab/numim;
+S_lab_t = S_lab/numim;
+    
 % Redifining the prefix
 if n_or_m == 'N'
     pref_hsv = 'hsv_n_';
@@ -229,7 +246,7 @@ for i = 1:numim
        z_hsv = (v_hsv - M_hsv_t) / S_hsv_t;
        v_hsv = (z_hsv * manual_std_hsv) + manual_hsv;
        z_lab = (l_lab - M_lab_t) / S_lab_t;
-       l_lab = (z_lab * manual_std_lab) + manual_hsv;
+       l_lab = (z_lab * manual_std_lab) + manual_lab;
    elseif lum_src == 'N' && n_or_m == 'M'
        v_hsv = empty_hsv + M_hsv_t;
        l_lab = empty_lab + M_lab_t;
